@@ -18,6 +18,12 @@ export default function TaskCard({
   const dragTimeout = useRef(null);
   const startPos = useRef({ x: 0, y: 0 });
 
+  const members = task?.members ?? [];
+  const comments = task?.comments ?? 0;
+  const files = task?.files ?? 0;
+  const titleText = task?.title ?? '';
+  const descText = task?.description ?? '';
+
   const handleDoubleClick = (e) => {
     
     if (e.target.closest('button')) return;
@@ -93,22 +99,22 @@ export default function TaskCard({
             <MoreHorizontal className="w-4 h-4" />
           </button>
         </div>
-        <h4 className="font-bold text-gray-900 mb-2">{task.title}</h4>
-        <p className="text-xs text-gray-500 mb-4 leading-relaxed">{task.description}</p>
+        <h4 className="font-bold text-gray-900 mb-2">{titleText}</h4>
+        <p className="text-xs text-gray-500 mb-4 leading-relaxed">{descText}</p>
         <div className="flex items-center justify-between">
           <div className="flex -space-x-2">
-            {task.members.map((member, i) => (
-              <div key={i} className="w-7 h-7 bg-gray-300 rounded-full border-2 border-white"></div>
+            {members.map((member, i) => (
+              <div key={member?.id ?? member ?? i} className="w-7 h-7 bg-gray-300 rounded-full border-2 border-white" />
             ))}
           </div>
           <div className="flex items-center gap-3 text-gray-500">
             <div className="flex items-center gap-1 text-xs">
               <img src='./message.svg' className="w-4 h-4" alt="messages" />
-              {task.comments}
+              {comments}
             </div>
             <div className="flex items-center gap-1 text-xs">
               <img src='./folder-2.svg' className="w-4 h-4" alt="files" />
-              {task.files}
+              {files}
             </div>
           </div>
         </div>

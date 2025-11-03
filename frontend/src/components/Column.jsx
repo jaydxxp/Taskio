@@ -36,12 +36,13 @@ export default function Column({
           <div className={`w-2 h-2 ${dotColor} rounded-full`}></div>
           <h3 className="font-bold text-gray-900">{title}</h3>
           <span className="bg-gray-200 text-gray-600 text-xs font-semibold px-2 py-1 rounded">
-            {tasks.length}
+            {(tasks || []).length}
           </span>
         </div>
         <div className="flex items-center gap-2">
           <Newtask
             onCreate={(task) => onCreate?.(task, columnId)}
+            defaultStatus={columnId}
             trigger={
               <button
                 type="button"
@@ -58,22 +59,22 @@ export default function Column({
       <div className={`h-1 ${color.replace('text-', 'bg-')} rounded-full mb-4`}></div>
 
       <div className="space-y-4 min-h-[200px]">
-        {tasks.map((task, index) => (
+        {(tasks || []).map((task, index) => (
           <TaskCard
-            key={task.id}
-            task={task}
-            columnId={columnId}
-            index={index}
-            setDragOffset={setDragOffset}
-            setMousePos={setMousePos}
-            setDragging={setDragging}
-            dragging={dragging}
-            dropTarget={dropTarget}
-            setDropTarget={setDropTarget}
-            getPriorityColor={getPriorityColor}
-            onTaskClick={onTaskClick}
-          />
-        ))}
+            key={task._id ?? task.id ?? `task-${index}`}
+             task={task}
+             columnId={columnId}
+             index={index}
+             setDragOffset={setDragOffset}
+             setMousePos={setMousePos}
+             setDragging={setDragging}
+             dragging={dragging}
+             dropTarget={dropTarget}
+             setDropTarget={setDropTarget}
+             getPriorityColor={getPriorityColor}
+             onTaskClick={onTaskClick}
+           />
+         ))}
 
         {isOverColumn && dragging && tasks.length === 0 && (
           <div className="h-32 border-2 border-dashed border-indigo-300 rounded-2xl flex items-center justify-center text-indigo-400 text-sm">

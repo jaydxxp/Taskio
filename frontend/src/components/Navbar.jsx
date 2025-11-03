@@ -22,11 +22,7 @@ export default function Navbar() {
 
   
       <div className="flex items-center space-x-4">
-        <Link to={"/about"}>
-        <button className="text-black px-3 py-1 rounded-full hover:bg-purple-100 transition text-sm cursor-pointer">
-          About
-        </button>
-        </Link>
+        
         <Link to={"/login"}>
         <button className="text-black px-3 py-1 rounded-full hover:bg-purple-100 transition text-sm cursor-pointer">
           Login

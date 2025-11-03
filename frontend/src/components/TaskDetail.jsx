@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from 'react';
-import { X, Calendar, User, Paperclip, MessageSquare, Flag } from 'lucide-react';
 
 export default function TaskDetail({ task, onClose, getPriorityColor, onUpdate }) {
   const [activeTab, setActiveTab] = useState('overview');
@@ -8,7 +7,6 @@ export default function TaskDetail({ task, onClose, getPriorityColor, onUpdate }
   const [description, setDescription] = useState(task?.description || '');
   const [members, setMembers] = useState(task?.members || []);
   const [files, setFiles] = useState(task?.files || 0);
-  const [comments, setComments] = useState(task?.comments || 0);
   const [status, setStatus] = useState(task?.status || 'inProgress');
 
   useEffect(() => {
@@ -17,7 +15,6 @@ export default function TaskDetail({ task, onClose, getPriorityColor, onUpdate }
     setDescription(task?.description || '');
     setMembers(task?.members || []);
     setFiles(task?.files || 0);
-    setComments(task?.comments || 0);
     setStatus(task?.status || 'inProgress');
   }, [task]);
 
@@ -45,18 +42,55 @@ export default function TaskDetail({ task, onClose, getPriorityColor, onUpdate }
   const completedCount = subtasks.filter(s => s.completed).length;
   const progressPercent = subtasks.length ? Math.round((completedCount / subtasks.length) * 100) : 0;
 
-  const handleSave = () => {
+  const handleSave = async () => {
     const updated = {
       ...task,
       subtasks,
       description,
       members,
       files,
-      comments,
       status
     };
-    onUpdate?.(updated);
+    try {
+      if (onUpdate) await onUpdate(updated);
+    } catch (e) {
+
+    }
     onClose?.();
+  };
+
+  const postComment = async (text) => {
+    if (!text || !text.trim()) return;
+    const payloadText = text.trim();
+
+
+    const optimistic = {
+      id: `${Date.now()}-${Math.random().toString(36).slice(2,6)}`,
+      taskId: task.id,
+      text: payloadText,
+      authorId: sessionStorage.getItem('user_id') || localStorage.getItem('user_id') || null,
+      authorName: sessionStorage.getItem('user_name') || localStorage.getItem('user_name') || null,
+      createdAt: new Date().toISOString()
+    };
+
+    
+
+  
+    try {
+      const token = localStorage.getItem('token') || '';
+      const headers = token ? { Authorization: `Bearer ${token}` } : {};
+      const res = await fetch(`${(import.meta.env.VITE_BACKEND_URL || '').replace(/\/$/, '')}/api/v1/task/${task.id}/comment`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...headers },
+        body: JSON.stringify({ text: payloadText })
+      });
+      if (res.ok) {
+        const json = await res.json();
+        setComments(prev => prev.map(c => c.id === optimistic.id ? json : c));
+      }
+    } catch (e) {
+     
+    }
   };
 
   return (
@@ -68,7 +102,6 @@ export default function TaskDetail({ task, onClose, getPriorityColor, onUpdate }
         className="bg-white rounded-3xl w-full max-w-3xl max-h-[90vh] overflow-hidden shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
-
         <div className="flex items-start justify-between p-6 border-b border-gray-200 bg-violet-600 text-white">
           <div className="flex-1 pr-4">
             <div className="flex items-center gap-3 mb-2">
@@ -81,17 +114,16 @@ export default function TaskDetail({ task, onClose, getPriorityColor, onUpdate }
           </div>
           <button
             onClick={onClose}
-            className="p-2.5 hover:bg-white hover:bg-opacity-20 rounded-full transition-colors"
+            className="p-2.5 cursor-pointer rounded-full transition-colors"
             aria-label="Close"
           >
-            <X className="w-6 h-6 text-white" />
+            ✕
           </button>
         </div>
 
-   
         <div className="p-4 border-b border-gray-200">
           <div className="flex gap-4">
-            {['overview', 'subtasks', 'comments', 'files'].map((tab) => (
+            {['overview', 'subtasks'].map((tab) => (
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}
@@ -118,71 +150,14 @@ export default function TaskDetail({ task, onClose, getPriorityColor, onUpdate }
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <h3 className="text-sm font-semibold text-gray-500 uppercase mb-3 flex items-center gap-2"><User className="w-4 h-4" /> Team Members</h3>
-                  <div className="flex flex-wrap gap-2">
-                    {members.length === 0 && <div className="text-sm text-gray-500">No members assigned</div>}
-                    {members.map((m, i) => (
-                      <div key={i} className="flex items-center gap-2 bg-gray-100 rounded-full px-3 py-2">
-                        <div className="w-8 h-8 bg-gradient-to-br from-indigo-400 to-purple-500 rounded-full flex items-center justify-center text-white font-semibold">
-                          {String(m)?.[0] ?? String.fromCharCode(65 + i)}
-                        </div>
-                        <div className="text-sm font-medium text-gray-700">{m}</div>
-                      </div>
-                    ))}
+                  <h3 className="text-sm font-semibold text-gray-500 uppercase mb-2">Members</h3>
+                  <div className="flex gap-2 items-center">
+                    {(members || []).map((m, i) => <div key={i} className="px-3 py-1 bg-gray-100 rounded-md text-sm">{m.name || m}</div>)}
                   </div>
                 </div>
-
                 <div>
-                  <h3 className="text-sm font-semibold text-gray-500 uppercase mb-3 flex items-center gap-2"><Flag className="w-4 h-4" /> Status Information</h3>
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between bg-gray-50 rounded-lg p-3">
-                      <span className="text-sm text-gray-600">Priority</span>
-                      <span className={`text-xs font-semibold px-2.5 py-1 rounded ${getPriorityColor?.(task.priority) ?? 'bg-gray-100 text-gray-700'}`}>
-                        {task.priority}
-                      </span>
-                    </div>
-
-                    <div className="flex items-center justify-between bg-gray-50 rounded-lg p-3">
-                      <span className="text-sm text-gray-600">Status</span>
-                      <select value={status} onChange={(e) => setStatus(e.target.value)} className="text-sm">
-                        <option value="todo">To Do</option>
-                        <option value="inProgress">In Progress</option>
-                        <option value="done">Done</option>
-                      </select>
-                    </div>
-
-                    <div className="flex items-center justify-between bg-gray-50 rounded-lg p-3">
-                      <span className="text-sm text-gray-600">Due Date</span>
-                      <div className="text-sm text-gray-800">{task.dueAt ? new Date(task.dueAt).toLocaleDateString() : 'Not set'}</div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="bg-gradient-to-r from-indigo-50 to-purple-50 rounded-2xl p-4">
-                <h3 className="text-sm font-semibold text-gray-700 mb-3">Activity Summary</h3>
-                <div className="flex items-center gap-6">
-                  <div className="flex items-center gap-2">
-                    <MessageSquare className="w-5 h-5 text-indigo-600" />
-                    <div>
-                      <div className="text-2xl font-bold text-gray-900">{comments}</div>
-                      <div className="text-xs text-gray-600">Comments</div>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Paperclip className="w-5 h-5 text-purple-600" />
-                    <div>
-                      <div className="text-2xl font-bold text-gray-900">{files}</div>
-                      <div className="text-xs text-gray-600">Files</div>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Calendar className="w-5 h-5 text-green-600" />
-                    <div>
-                      <div className="text-2xl font-bold text-gray-900">{progressPercent}%</div>
-                      <div className="text-xs text-gray-600">Progress</div>
-                    </div>
-                  </div>
+                  <h3 className="text-sm font-semibold text-gray-500 uppercase mb-2">Due</h3>
+                  <div className="text-sm text-gray-700">{task.dueAt ? new Date(task.dueAt).toLocaleDateString() : 'Not set'}</div>
                 </div>
               </div>
             </div>
@@ -190,70 +165,64 @@ export default function TaskDetail({ task, onClose, getPriorityColor, onUpdate }
 
           {activeTab === 'subtasks' && (
             <div className="space-y-4">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold text-gray-900">Subtasks</h3>
-                <span className="text-sm text-gray-600">{completedCount} of {subtasks.length} completed</span>
+              <div className="flex gap-2">
+                <input value={newSubtask} onChange={(e) => setNewSubtask(e.target.value)} className="flex-1 border px-3 py-2 rounded-lg" placeholder="New subtask" />
+                <button onClick={addSubtask} className="px-4 py-2 bg-violet-600 text-white rounded-lg">Add</button>
               </div>
-
-              <div className="flex gap-2 mb-3">
-                <input
-                  type="text"
-                  value={newSubtask}
-                  onChange={(e) => setNewSubtask(e.target.value)}
-                  onKeyDown={(e) => { if (e.key === 'Enter') addSubtask(); }}
-                  placeholder="Add a new subtask..."
-                  className="flex-1 border border-gray-300 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500"
-                />
-                <button onClick={addSubtask} className="px-4 py-2 bg-violet-600 text-white rounded-lg text-sm">Add</button>
-              </div>
-
               <div className="space-y-2">
-                {subtasks.length === 0 ? (
-                  <div className="text-center py-6 text-gray-500">No subtasks yet. Add one to get started!</div>
-                ) : (
-                  subtasks.map((st) => (
-                    <div key={st.id} className="flex items-center gap-3 bg-gray-50 rounded-lg p-3 hover:bg-gray-100 transition-colors">
-                      <input type="checkbox" checked={st.completed} onChange={() => toggleSubtask(st.id)} className="w-5 h-5 rounded cursor-pointer" />
-                      <div className={`flex-1 text-sm ${st.completed ? 'line-through text-gray-400' : 'text-gray-800'}`}>{st.title}</div>
-                      <button onClick={() => deleteSubtask(st.id)} className="text-red-500 hover:text-red-700 p-1"><X className="w-4 h-4" /></button>
+                {subtasks.map(st => (
+                  <div key={st.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                    <div>
+                      <label className="inline-flex items-center gap-2">
+                        <input type="checkbox" checked={!!st.completed} onChange={() => toggleSubtask(st.id)} />
+                        <span className="ml-2">{st.title}</span>
+                      </label>
                     </div>
-                  ))
-                )}
-              </div>
-
-              {subtasks.length > 0 && (
-                <div className="mt-4">
-                  <div className="w-full bg-gray-200 rounded-full h-2">
-                    <div className="bg-gradient-to-r from-indigo-500 to-indigo-600 h-2 rounded-full transition-all" style={{ width: `${progressPercent}%` }} />
+                    <div className="text-sm text-gray-400">
+                      <button onClick={() => deleteSubtask(st.id)} className="text-red-500">Delete</button>
+                    </div>
                   </div>
-                </div>
-              )}
+                ))}
+              </div>
+              <div className="text-sm text-gray-500">Progress: {progressPercent}%</div>
             </div>
           )}
 
-          {activeTab === 'comments' && (
-            <div className="space-y-4">
-              <div className="text-center py-8 text-gray-500">
-                <MessageSquare className="w-12 h-12 mx-auto mb-3 text-gray-300" />
-                <p className="text-sm">No comments yet. Be the first to comment!</p>
-              </div>
-              <div className="flex gap-3">
-                <div className="w-10 h-10 bg-gradient-to-br from-indigo-400 to-purple-500 rounded-full flex-shrink-0"></div>
-                <textarea className="flex-1 border border-gray-300 rounded-xl p-3 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500 resize-none" rows={3} placeholder="Write a comment..." />
-              </div>
-            </div>
-          )}
+          
 
           {activeTab === 'files' && (
             <div className="text-center py-8 text-gray-500">
-              <Paperclip className="w-12 h-12 mx-auto mb-3 text-gray-300" />
+              <div className="w-12 h-12 mx-auto mb-3 text-gray-300">📎</div>
               <p className="text-sm">No files attached yet.</p>
               <button className="mt-4 px-4 py-2 bg-violet-600 text-white rounded-lg text-sm font-medium hover:bg-violet-700 transition-colors">Upload Files</button>
             </div>
           )}
+
+          {activeTab === 'activity' && (
+            <div className="space-y-3">
+              {(!activity || activity.length === 0) ? (
+                <div className="text-center py-6 text-gray-500">No activity yet.</div>
+              ) : (
+                (activity || []).slice().reverse().map((a, idx) => (
+                  <div key={idx} className="p-3 bg-gray-50 rounded-lg">
+                    <div className="flex items-center justify-between mb-1">
+                      <div className="text-sm text-gray-700">
+                        {a.type === 'comment' ? 'Commented' : a.type === 'create' ? 'Created' : a.type === 'update' ? 'Updated' : a.type === 'delete' ? 'Deleted' : a.type}
+                        {a.task && a.task.title ? ` — ${a.task.title}` : ''}
+                      </div>
+                      <div className="text-xs text-gray-400">{new Date(a.ts || Date.now()).toLocaleString()}</div>
+                    </div>
+                    <div className="text-xs text-gray-500">
+                      by {a.actorId || a.actorName || 'unknown'} {a.changes ? `· changes: ${Object.keys(a.changes || {}).join(', ')}` : ''}
+                    </div>
+                    {a.comment && <div className="mt-2 text-sm text-gray-800">{a.comment.text}</div>}
+                  </div>
+                ))
+              )}
+            </div>
+          )}
         </div>
 
-      
         <div className="border-t border-gray-200 p-4 bg-gray-50 flex items-center justify-end gap-3">
           <button
             onClick={onClose}
